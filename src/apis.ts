@@ -35,6 +35,7 @@ export function registerMicroApps<T extends object = {}>(
         // 在 start 函数的最后执行该 promise 的 resolve
 
         const { mount, ...otherMicroAppConfigs } = (
+          // 在 start() 函数执行后，frameworkConfiguration 会拿到配置参数
           await loadApp({ name, props, ...appConfig }, frameworkConfiguration, lifeCycles)
         )();
 
@@ -116,6 +117,7 @@ export function loadMicroApp<T extends object = {}>(
 }
 
 export function start(opts: FrameworkConfiguration = {}) {
+  // singular 默认为 true，表示同一时间只会渲染一个微应用
   frameworkConfiguration = { prefetch: true, singular: true, sandbox: true, ...opts };
   const { prefetch, sandbox, singular, urlRerouteOnly, ...importEntryOpts } = frameworkConfiguration;
 
@@ -134,7 +136,9 @@ export function start(opts: FrameworkConfiguration = {}) {
       }
     }
   }
-
+  // urlRerouteOnly： single-spa 的 start() 函数的参数，默认为 false，
+  // 如果为 true，手动调用 history.pushState(), history.replaceState()
+  // 将不会引起 single-spa 重新定位路由，只能是浏览器路由发生变化时，才会引起 single-spa 重新定位路由
   startSingleSpa({ urlRerouteOnly });
 
   frameworkStartedDefer.resolve();

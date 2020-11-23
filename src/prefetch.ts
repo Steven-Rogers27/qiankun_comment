@@ -36,6 +36,8 @@ declare global {
 }
 
 // RIC and shim for browsers setTimeout() without it
+// window.requestIdleCallback 把传给它的回调函数放进队列，等到了浏览器的空闲期时再执行队列里的回调
+// 使得可以在主事件循环上执行优先级较低，或者可以在后台执行的函数
 const requestIdleCallback =
   window.requestIdleCallback ||
   function requestIdleCallback(cb: CallableFunction) {
@@ -67,14 +69,18 @@ function prefetch(entry: Entry, opts?: ImportEntryOpts): void {
     // Don't prefetch if in a slow network or offline
     return;
   }
-
+  // 在浏览器空闲时候，或者采用异步宏任务的方式加载脚本、样式静态资源
   requestIdleCallback(async () => {
     const { getExternalScripts, getExternalStyleSheets } = await importEntry(entry, opts);
     requestIdleCallback(getExternalStyleSheets);
     requestIdleCallback(getExternalScripts);
   });
 }
-
+/**
+ * 当监听到 'single-spa:first-mount' 事件后，才开始加载其他未加载的微应用的静态资源
+ * @param apps 
+ * @param opts 
+ */
 function prefetchAfterFirstMounted(apps: AppMetadata[], opts?: ImportEntryOpts): void {
   window.addEventListener('single-spa:first-mount', function listener() {
     const notLoadedApps = apps.filter((app) => getAppStatus(app.name) === NOT_LOADED); // NOT_LOADED 微应用已经被注册但还没加载
@@ -89,7 +95,11 @@ function prefetchAfterFirstMounted(apps: AppMetadata[], opts?: ImportEntryOpts):
     window.removeEventListener('single-spa:first-mount', listener);
   });
 }
-
+/**
+ * 立即开始执行 prefetch 
+ * @param apps 
+ * @param opts 
+ */
 export function prefetchImmediately(apps: AppMetadata[], opts?: ImportEntryOpts): void {
   if (process.env.NODE_ENV === 'development') {
     console.log('[qiankun] prefetch starting for apps...', apps);
